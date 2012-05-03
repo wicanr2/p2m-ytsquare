@@ -20,6 +20,12 @@ public class DBUtils {
 	public final static String DELETE_FRIEND = "delete from userFriend where userId = ? and friendUserId = ?";
 	public final static String FIND_10FRIENDS = "select * from user where userId like ? limit ?,?";
 	
+	public final static String GROUP_USER_COUNT = "select COUNT(*) from userFriend where userId = ? and groupId = ?";
+	public final static String CREATE_GROUP = "insert into group values(?, ?, ?)";
+	public final static String DELETE_GROUP = "delete from group where userId = ? and groupId = ?";
+	public final static String ADD_FRIEND_TO_GROUP = "";
+	public final static String REMOVE_FRIEND_FROM_GROUP = "";
+
 	public final static String GET_RECEIVED_MESSAGES_BY_DATE = "select b.*, c.nickname from userMessage a, message b, user c where a.userId = ? and a.messageId = b.messageId and b.messageDate >= ? and messageDate <= ? and messageStatusId <> ? and b.fromUserId = c.userId";
 	public final static String UPDATE_RECEIVED_MESSAGE_STATUS = "update userMessage set messageStatusId = ? where userId = ? and messageId = ?";
 	public final static String DELETE_RECEIVED_MESSAGE = "update userMessage set messageStatusId = ? where userId = ? and messageId = ?";
@@ -40,40 +46,6 @@ public class DBUtils {
 		} catch (Exception e) {
 			return null;
 		}
-	}
-
-	public static boolean isUserRegistered(Connection conn, String userId) throws SQLException {
-		boolean result = false;
-		PreparedStatement stmt = null;
-		stmt = conn.prepareStatement(QUERY_USER_COUNT);
-		stmt.setString(1, userId);
-		ResultSet rs = stmt.executeQuery();
-		if (rs != null) {
-			rs.next();
-			// find user id registered
-			if (rs.getInt(1) > 0) {
-				result = true;
-			}
-	    }
-		stmt.close();
-		return result;
-	}
-
-	public static boolean hasFriend(Connection conn, String userId, String friendId) throws SQLException {
-		boolean result = false;
-		PreparedStatement stmt = null;
-		stmt = conn.prepareStatement(QUERY_USER_FRIEND_COUNT);
-		stmt.setString(1, userId);
-		ResultSet rs = stmt.executeQuery();
-		if (rs != null) {
-			rs.next();
-			// find user id registered
-			if (rs.getInt(1) > 0) {
-				result = true;
-			}
-	    }
-		stmt.close();
-		return result;
 	}
 }
 

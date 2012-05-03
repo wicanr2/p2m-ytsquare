@@ -40,6 +40,41 @@ import com.ytsquare.push2me.message.ResponseMessage;
 // anr / getMessage
 // anr / putMessage
 public class Push2MeService {
+	
+	private boolean isUserRegistered(Connection conn, String userId) throws SQLException {
+		boolean result = false;
+		PreparedStatement stmt = null;
+		stmt = conn.prepareStatement(DBUtils.QUERY_USER_COUNT);
+		stmt.setString(1, userId);
+		ResultSet rs = stmt.executeQuery();
+		if (rs != null) {
+			rs.next();
+			// find user id registered
+			if (rs.getInt(1) > 0) {
+				result = true;
+			}
+	    }
+		stmt.close();
+		return result;
+	}
+
+	private boolean hasFriend(Connection conn, String userId, String friendId) throws SQLException {
+		boolean result = false;
+		PreparedStatement stmt = null;
+		stmt = conn.prepareStatement(DBUtils.QUERY_USER_FRIEND_COUNT);
+		stmt.setString(1, userId);
+		ResultSet rs = stmt.executeQuery();
+		if (rs != null) {
+			rs.next();
+			// find user id registered
+			if (rs.getInt(1) > 0) {
+				result = true;
+			}
+	    }
+		stmt.close();
+		return result;
+	}
+	
 	/* **************************************************************************** */
 
 	/* **************************************************************************** */
@@ -54,11 +89,11 @@ public class Push2MeService {
 		if (conn != null) {
 			PreparedStatement stmt = null;
 			try {
-				if (DBUtils.isUserRegistered(conn, friend_userId)) {
+				if (isUserRegistered(conn, friend_userId)) {
 					stmt = conn.prepareStatement(DBUtils.ADD_FRIEND);
 					stmt.setString(1, userId);
 					stmt.setString(2, friend_userId);
-					stmt.setString(3, "0");	
+					stmt.setString(3, "");	
 					if (stmt.executeUpdate() > 0) {
 						responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_DATA);
 					}
@@ -315,6 +350,123 @@ public class Push2MeService {
 		return responseMessage;	
 	}
 
+    @Path("/createGroup/{groupName}")
+	@PUT
+	@Produces(MediaType.APPLICATION_JSON)
+    public ResponseMessage createGroup(@PathParam("userId") String userId,
+			@PathParam("groupName") String groupName) {
+		ResponseMessage responseMessage = new ResponseMessage();
+		Connection conn = DBUtils.getConnection();
+		if (conn != null) {
+			PreparedStatement stmt = null;
+			try {
+				stmt = conn.prepareStatement(DBUtils.CREATE_GROUP);
+				stmt.setString(1, userId);
+				stmt.setString(2, UUID.randomUUID().toString());
+				stmt.setString(3, groupName);	
+				if (stmt.executeUpdate() > 0) {
+					responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_DATA);
+				}
+				else {
+					responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+					responseMessage.setErrorMessage(ErrorMessage.USER_CREATE_GROUP_FAILED);
+				}
+			} catch (SQLException e) {
+				responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+				responseMessage.setErrorMessage(ErrorMessage.DATABASE_SERVICE_UNAVAILABLE);
+			} finally {
+				if (stmt != null) {
+					try {
+						stmt.close();
+					} catch (SQLException e) {
+						e.printStackTrace();
+					}
+				}
+				if (conn != null) {
+					try {
+						conn.close();
+					} catch (SQLException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		} else {
+			responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+			responseMessage.setErrorMessage(ErrorMessage.DATABASE_SERVICE_UNAVAILABLE);
+		}
+		return responseMessage;
+    }
+
+	private boolean isGroupEmpty(Connection conn, String userId, String groupId) throws SQLException {
+		boolean result = true;
+		PreparedStatement stmt = null;
+		stmt = conn.prepareStatement(DBUtils.GROUP_USER_COUNT);
+		stmt.setString(1, userId);
+		stmt.setString(2, groupId);
+		ResultSet rs = stmt.executeQuery();
+		if (rs != null) {
+			rs.next();
+			// find user id registered
+			if (rs.getInt(1) > 0) {
+				result = false;
+			}
+	    }
+		stmt.close();
+		return result;
+	}
+    
+	@Path("/deleteGroup/{groupId}")
+	@DELETE
+	@Produces(MediaType.APPLICATION_JSON)
+	// content type to output
+	public ResponseMessage deleteGroup(
+			@PathParam("userId") String userId,
+			@PathParam("groupId") String groupId) {
+		ResponseMessage responseMessage = new ResponseMessage();
+		Connection conn = DBUtils.getConnection();
+		if (conn != null) {
+			PreparedStatement stmt = null;
+			try {
+				if (isGroupEmpty(conn, userId, groupId)) {
+					stmt = conn.prepareStatement(DBUtils.DELETE_GROUP);
+					stmt.setString(1, userId);
+					stmt.setString(2, groupId);
+					if (stmt.executeUpdate() > 0) {
+						responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_DATA);
+					} else {
+						responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+						responseMessage.setErrorMessage(ErrorMessage.USER_DELETE_GROUP_FAILED);
+					}
+				} else {
+					responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+					responseMessage.setErrorMessage(ErrorMessage.USER_DELETE_GROUP_FAILED_GROUP_NOT_EMPTY);
+				}
+			} catch (SQLException e) {
+				responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+				responseMessage.setErrorMessage(ErrorMessage.DATABASE_SERVICE_UNAVAILABLE);
+			} finally {
+				if (stmt != null) {
+					try {
+						stmt.close();
+					} catch (SQLException e) {
+						e.printStackTrace();
+					}
+				}
+				if (conn != null) {
+					try {
+						conn.close();
+					} catch (SQLException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		} else {
+			responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+			responseMessage.setErrorMessage(ErrorMessage.DATABASE_SERVICE_UNAVAILABLE);
+		}
+		return responseMessage;	
+	}
+    
 	/**
 	 * according the userid and date to query message in some duration, and
 	 * push the message into list and return

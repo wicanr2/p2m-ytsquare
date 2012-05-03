@@ -12,6 +12,10 @@ public interface ErrorMessage {
 	public static final int USER_DELETE_FRIEND_FAILED = 0x0104;
 	public static final int USER_UPDATE_STATUS_FAILED = 0x0105;
 	
+	public static final int USER_CREATE_GROUP_FAILED = 0x0110;
+	public static final int USER_DELETE_GROUP_FAILED = 0x0111;
+	public static final int USER_DELETE_GROUP_FAILED_GROUP_NOT_EMPTY = 0x0112;
+	
 	public static final int MESSAGE_NOT_FOUND = 0x0200;
 	public static final int UPDATE_MESSAGE_STATUS_FAILED = 0x0201;
 
