@@ -14,7 +14,11 @@ public interface ErrorMessage {
 	
 	public static final int USER_CREATE_GROUP_FAILED = 0x0110;
 	public static final int USER_DELETE_GROUP_FAILED = 0x0111;
-	public static final int USER_DELETE_GROUP_FAILED_GROUP_NOT_EMPTY = 0x0112;
+	public static final int GROUP_NOT_EMPTY = 0x0112;
+	public static final int GROUP_EXIST = 0x0113;
+	public static final int GROUP_NOT_EXIST = 0x0114;
+	public static final int ADD_USER_TO_GROUP_FAILED = 0x0115;
+	public static final int CHANGE_GROUP_NAME_FAILED = 0x0116;
 	
 	public static final int MESSAGE_NOT_FOUND = 0x0200;
 	public static final int UPDATE_MESSAGE_STATUS_FAILED = 0x0201;

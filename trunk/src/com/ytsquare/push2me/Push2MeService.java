@@ -41,23 +41,6 @@ import com.ytsquare.push2me.message.ResponseMessage;
 // anr / putMessage
 public class Push2MeService {
 	
-	private boolean isUserRegistered(Connection conn, String userId) throws SQLException {
-		boolean result = false;
-		PreparedStatement stmt = null;
-		stmt = conn.prepareStatement(DBUtils.QUERY_USER_COUNT);
-		stmt.setString(1, userId);
-		ResultSet rs = stmt.executeQuery();
-		if (rs != null) {
-			rs.next();
-			// find user id registered
-			if (rs.getInt(1) > 0) {
-				result = true;
-			}
-	    }
-		stmt.close();
-		return result;
-	}
-
 	private boolean hasFriend(Connection conn, String userId, String friendId) throws SQLException {
 		boolean result = false;
 		PreparedStatement stmt = null;
@@ -89,7 +72,7 @@ public class Push2MeService {
 		if (conn != null) {
 			PreparedStatement stmt = null;
 			try {
-				if (isUserRegistered(conn, friend_userId)) {
+				if (DBUtils.isUserRegistered(conn, friend_userId)) {
 					stmt = conn.prepareStatement(DBUtils.ADD_FRIEND);
 					stmt.setString(1, userId);
 					stmt.setString(2, friend_userId);
@@ -211,6 +194,7 @@ public class Push2MeService {
 					user.setSex(rs.getInt(8));
 					user.setBirthday(rs.getString(9));
 					user.setStatusId(rs.getInt(10));
+					user.setGroup(rs.getString(11));
 					responseMessage.getUserList().add(user);
 				}
 				rs.close();
@@ -350,6 +334,24 @@ public class Push2MeService {
 		return responseMessage;	
 	}
 
+	private boolean hasGroup(Connection conn, String userId, String groupName) throws SQLException {
+		boolean result = true;
+		PreparedStatement stmt = null;
+		stmt = conn.prepareStatement(DBUtils.GROUP_USER_COUNT);
+		stmt.setString(1, userId);
+		stmt.setString(2, groupName);
+		ResultSet rs = stmt.executeQuery();
+		if (rs != null) {
+			rs.next();
+			// find user id registered
+			if (rs.getInt(1) > 0) {
+				result = false;
+			}
+	    }
+		stmt.close();
+		return result;
+	}
+    
     @Path("/createGroup/{groupName}")
 	@PUT
 	@Produces(MediaType.APPLICATION_JSON)
@@ -360,16 +362,21 @@ public class Push2MeService {
 		if (conn != null) {
 			PreparedStatement stmt = null;
 			try {
-				stmt = conn.prepareStatement(DBUtils.CREATE_GROUP);
-				stmt.setString(1, userId);
-				stmt.setString(2, UUID.randomUUID().toString());
-				stmt.setString(3, groupName);	
-				if (stmt.executeUpdate() > 0) {
-					responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_DATA);
-				}
-				else {
+				if (!hasGroup(conn, userId, groupName)) {
+					stmt = conn.prepareStatement(DBUtils.CREATE_GROUP);
+					stmt.setString(1, userId);
+					stmt.setString(2, UUID.randomUUID().toString());
+					stmt.setString(3, groupName);	
+					if (stmt.executeUpdate() > 0) {
+						responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_DATA);
+					}
+					else {
+						responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+						responseMessage.setErrorMessage(ErrorMessage.USER_CREATE_GROUP_FAILED);
+					}
+				} else {
 					responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
-					responseMessage.setErrorMessage(ErrorMessage.USER_CREATE_GROUP_FAILED);
+					responseMessage.setErrorMessage(ErrorMessage.GROUP_EXIST);
 				}
 			} catch (SQLException e) {
 				responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
@@ -396,41 +403,201 @@ public class Push2MeService {
 		}
 		return responseMessage;
     }
-
-	private boolean isGroupEmpty(Connection conn, String userId, String groupId) throws SQLException {
-		boolean result = true;
+    
+	private String getGroupIdByName(Connection conn, String userId, String groupName) throws SQLException {
+		String result = "";
 		PreparedStatement stmt = null;
-		stmt = conn.prepareStatement(DBUtils.GROUP_USER_COUNT);
+		stmt = conn.prepareStatement(DBUtils.GET_GROUP_ID_BY_NAME);
 		stmt.setString(1, userId);
-		stmt.setString(2, groupId);
+		stmt.setString(2, groupName);
 		ResultSet rs = stmt.executeQuery();
 		if (rs != null) {
 			rs.next();
 			// find user id registered
-			if (rs.getInt(1) > 0) {
-				result = false;
-			}
+			result = rs.getString(1);
 	    }
 		stmt.close();
 		return result;
-	}
-    
-	@Path("/deleteGroup/{groupId}")
-	@DELETE
+	}	
+
+    @Path("/changeGroupName/{oldGroupName}/{newGroupName}")
+	@PUT
 	@Produces(MediaType.APPLICATION_JSON)
-	// content type to output
-	public ResponseMessage deleteGroup(
-			@PathParam("userId") String userId,
-			@PathParam("groupId") String groupId) {
+    public ResponseMessage changeGroupName(@PathParam("userId") String userId,
+			@PathParam("groupName") String oldGroupName,
+			@PathParam("groupName") String newGroupName) {
 		ResponseMessage responseMessage = new ResponseMessage();
 		Connection conn = DBUtils.getConnection();
 		if (conn != null) {
 			PreparedStatement stmt = null;
 			try {
-				if (isGroupEmpty(conn, userId, groupId)) {
+				String groupId = getGroupIdByName(conn, userId, oldGroupName);
+				if (!groupId.equals("")) {
+					stmt = conn.prepareStatement(DBUtils.CHANGE_GROUP_NAME);
+					stmt.setString(1, newGroupName);
+					stmt.setString(2, userId);
+					stmt.setString(3, groupId);	
+					if (stmt.executeUpdate() > 0) {
+						responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_DATA);
+					}
+					else {
+						responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+						responseMessage.setErrorMessage(ErrorMessage.CHANGE_GROUP_NAME_FAILED);
+					}
+				} else {
+					responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+					responseMessage.setErrorMessage(ErrorMessage.GROUP_NOT_EXIST);
+				}
+			} catch (SQLException e) {
+				responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+				responseMessage.setErrorMessage(ErrorMessage.DATABASE_SERVICE_UNAVAILABLE);
+			} finally {
+				if (stmt != null) {
+					try {
+						stmt.close();
+					} catch (SQLException e) {
+						e.printStackTrace();
+					}
+				}
+				if (conn != null) {
+					try {
+						conn.close();
+					} catch (SQLException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		} else {
+			responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+			responseMessage.setErrorMessage(ErrorMessage.DATABASE_SERVICE_UNAVAILABLE);
+		}
+		return responseMessage;
+    }    
+    
+    @Path("/addFriendToGroup/{groupName}/{friendId}")
+	@PUT
+	@Produces(MediaType.APPLICATION_JSON)
+    public ResponseMessage addFriendToGroup(@PathParam("userId") String userId,
+			@PathParam("groupName") String groupName,
+			@PathParam("friendId") String friendId) {
+		ResponseMessage responseMessage = new ResponseMessage();
+		Connection conn = DBUtils.getConnection();
+		if (conn != null) {
+			PreparedStatement stmt = null;
+			try {
+				String groupId = getGroupIdByName(conn, userId, groupName);
+				if (!groupId.equals("")) {
+					stmt = conn.prepareStatement(DBUtils.ADD_FRIEND_TO_GROUP);
+					stmt.setString(1, groupId);
+					stmt.setString(2, userId);
+					stmt.setString(3, friendId);	
+					if (stmt.executeUpdate() > 0) {
+						responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_DATA);
+					}
+					else {
+						responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+						responseMessage.setErrorMessage(ErrorMessage.ADD_USER_TO_GROUP_FAILED);
+					}
+				} else {
+					responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+					responseMessage.setErrorMessage(ErrorMessage.GROUP_NOT_EXIST);
+				}
+			} catch (SQLException e) {
+				responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+				responseMessage.setErrorMessage(ErrorMessage.DATABASE_SERVICE_UNAVAILABLE);
+			} finally {
+				if (stmt != null) {
+					try {
+						stmt.close();
+					} catch (SQLException e) {
+						e.printStackTrace();
+					}
+				}
+				if (conn != null) {
+					try {
+						conn.close();
+					} catch (SQLException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		} else {
+			responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+			responseMessage.setErrorMessage(ErrorMessage.DATABASE_SERVICE_UNAVAILABLE);
+		}
+		return responseMessage;
+    }
+    
+    @Path("/deleteFriendFromGroup/{groupName}/{friendId}")
+	@PUT
+	@Produces(MediaType.APPLICATION_JSON)
+    public ResponseMessage deleteFriendFromGroup(@PathParam("userId") String userId,
+    		@PathParam("groupName") String groupName,
+    		@PathParam("friendId") String friendId) {
+		ResponseMessage responseMessage = new ResponseMessage();
+		Connection conn = DBUtils.getConnection();
+		if (conn != null) {
+			PreparedStatement stmt = null;
+			try {
+				String groupId = getGroupIdByName(conn, userId, groupName);
+				if (!groupId.equals("")) {
+					stmt = conn.prepareStatement(DBUtils.REMOVE_FRIEND_FROM_GROUP);
+					stmt.setString(1, "");
+					stmt.setString(2, userId);
+					stmt.setString(3, friendId);	
+					if (stmt.executeUpdate() > 0) {
+						responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_DATA);
+					}
+					else {
+						responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+						responseMessage.setErrorMessage(ErrorMessage.ADD_USER_TO_GROUP_FAILED);
+					}
+				} else {
+					responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+					responseMessage.setErrorMessage(ErrorMessage.GROUP_NOT_EXIST);
+				}
+			} catch (SQLException e) {
+				responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+				responseMessage.setErrorMessage(ErrorMessage.DATABASE_SERVICE_UNAVAILABLE);
+			} finally {
+				if (stmt != null) {
+					try {
+						stmt.close();
+					} catch (SQLException e) {
+						e.printStackTrace();
+					}
+				}
+				if (conn != null) {
+					try {
+						conn.close();
+					} catch (SQLException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		} else {
+			responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+			responseMessage.setErrorMessage(ErrorMessage.DATABASE_SERVICE_UNAVAILABLE);
+		}
+		return responseMessage;
+    }
+    
+	@Path("/deleteGroup/{groupName}")
+	@DELETE
+	@Produces(MediaType.APPLICATION_JSON)
+	// content type to output
+	public ResponseMessage deleteGroup(
+			@PathParam("userId") String userId,
+			@PathParam("groupName") String groupName) {
+		ResponseMessage responseMessage = new ResponseMessage();
+		Connection conn = DBUtils.getConnection();
+		if (conn != null) {
+			PreparedStatement stmt = null;
+			try {
+				if (hasGroup(conn, userId, groupName)) {
 					stmt = conn.prepareStatement(DBUtils.DELETE_GROUP);
 					stmt.setString(1, userId);
-					stmt.setString(2, groupId);
+					stmt.setString(2, groupName);
 					if (stmt.executeUpdate() > 0) {
 						responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_DATA);
 					} else {
@@ -439,7 +606,7 @@ public class Push2MeService {
 					}
 				} else {
 					responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
-					responseMessage.setErrorMessage(ErrorMessage.USER_DELETE_GROUP_FAILED_GROUP_NOT_EMPTY);
+					responseMessage.setErrorMessage(ErrorMessage.GROUP_NOT_EMPTY);
 				}
 			} catch (SQLException e) {
 				responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
@@ -466,7 +633,9 @@ public class Push2MeService {
 		}
 		return responseMessage;	
 	}
-    
+
+	
+	
 	/**
 	 * according the userid and date to query message in some duration, and
 	 * push the message into list and return

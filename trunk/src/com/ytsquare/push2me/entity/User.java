@@ -21,6 +21,7 @@ public class User {
 	private String birthday; 
 	private String register_day; 
 	private int statusId;
+	private String Group = "";
 	
 	public User(){
 		
@@ -112,5 +113,13 @@ public class User {
 
 	public void setStatusId(int statusId) {
 		this.statusId = statusId;
+	}
+
+	public String getGroup() {
+		return Group;
+	}
+
+	public void setGroup(String group) {
+		Group = group;
 	}
 }
