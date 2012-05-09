@@ -421,7 +421,7 @@ public class Push2MeService {
 	}	
 
     @Path("/changeGroupName/{oldGroupName}/{newGroupName}")
-	@PUT
+	@POST
 	@Produces(MediaType.APPLICATION_JSON)
     public ResponseMessage changeGroupName(@PathParam("userId") String userId,
 			@PathParam("groupName") String oldGroupName,
@@ -475,7 +475,7 @@ public class Push2MeService {
     }    
     
     @Path("/addFriendToGroup/{groupName}/{friendId}")
-	@PUT
+	@POST
 	@Produces(MediaType.APPLICATION_JSON)
     public ResponseMessage addFriendToGroup(@PathParam("userId") String userId,
 			@PathParam("groupName") String groupName,
@@ -529,7 +529,7 @@ public class Push2MeService {
     }
     
     @Path("/deleteFriendFromGroup/{groupName}/{friendId}")
-	@PUT
+	@DELETE
 	@Produces(MediaType.APPLICATION_JSON)
     public ResponseMessage deleteFriendFromGroup(@PathParam("userId") String userId,
     		@PathParam("groupName") String groupName,
@@ -766,7 +766,7 @@ public class Push2MeService {
 		return internalUpdateReceivedMessageStatus(userId, messageId, Message.STATUS_READ);
 	}
 
-	@Path("/deleteReceivedMessage/{messageId}")
+	@Path("/deleteReceivedMessageById/{messageId}")
 	@DELETE
 	@Produces(MediaType.APPLICATION_JSON)
 	// content type to output
@@ -775,8 +775,8 @@ public class Push2MeService {
 		return internalUpdateReceivedMessageStatus(userId, messageId, Message.STATUS_DELETE);
 	}
 	
-	// getMyPostMessageWithTitle in duration
-	@Path("/getMyPostMessageTitles/{startDate}/{endDate}")
+	// getSentMessagesByDate in duration
+	@Path("/getSentMessagesByDate/{startDate}/{endDate}")
 	@GET
 	@Produces(MediaType.APPLICATION_JSON)
 	public ResponseMessage getSentMessagesByDate(

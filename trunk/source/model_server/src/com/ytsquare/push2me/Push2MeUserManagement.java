@@ -61,70 +61,66 @@ public class Push2MeUserManagement {
 	@Produces(MediaType.APPLICATION_JSON)
 	@Consumes(MediaType.APPLICATION_JSON)
 	public ResponseMessage registerUser(User user) {
-		try {
-			ResponseMessage responseMessage = new ResponseMessage();		
-			Connection conn = DBUtils.getConnection();
-			if (conn != null) {
-				PreparedStatement stmt = null;
-				try {
-					if (!DBUtils.isUserRegistered(conn, user.getUserId())) {				
-						stmt = conn.prepareStatement(DBUtils.REGISTER_USER);
-						// set userid(email)
-						stmt.setString(1, user.getUserId());
-						// set password
-						stmt.setString(2, user.getPassword());
-						stmt.setString(3, user.getFirstname());
-						stmt.setString(4, user.getLastname());
-						stmt.setString(5, user.getNickname());
-						InputStream image = new ByteArrayInputStream(user.getImage());
-						stmt.setBinaryStream(6, image);
-						stmt.setString(7, user.getCountry());
-						stmt.setInt(8, user.getSex());
-						// set birthday, format yyyy-mm-dd
-						java.util.Date date1 = new SimpleDateFormat("yyyy-MM-dd").parse(user.getBirthday());
-						stmt.setDate(9, new java.sql.Date(date1.getTime()));
-						stmt.setInt(10, user.getStatusId());
-						
-						if (stmt.executeUpdate() > 0) {					
-							responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_DATA);
-						}
-						else {
-							responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
-							responseMessage.setErrorMessage(ErrorMessage.USER_REGISTER_FAILED);						
-						}
-					} else {
+		ResponseMessage responseMessage = new ResponseMessage();		
+		Connection conn = DBUtils.getConnection();
+		if (conn != null) {
+			PreparedStatement stmt = null;
+			try {
+				if (!DBUtils.isUserRegistered(conn, user.getUserId())) {				
+					stmt = conn.prepareStatement(DBUtils.REGISTER_USER);
+					// set userid(email)
+					stmt.setString(1, user.getUserId());
+					// set password
+					stmt.setString(2, user.getPassword());
+					stmt.setString(3, user.getFirstname());
+					stmt.setString(4, user.getLastname());
+					stmt.setString(5, user.getNickname());
+					InputStream image = new ByteArrayInputStream(user.getImage());
+					stmt.setBinaryStream(6, image);
+					stmt.setString(7, user.getCountry());
+					stmt.setInt(8, user.getSex());
+					// set birthday, format yyyy-mm-dd
+//					java.util.Date date1 = new SimpleDateFormat("yyyy-MM-dd").parse(user.getBirthday());
+//					stmt.setDate(9, new java.sql.Date(date1.getTime()));
+					stmt.setString(9, user.getBirthday());
+					stmt.setInt(10, user.getStatusId());
+					
+					if (stmt.executeUpdate() > 0) {					
+						responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_DATA);
+					}
+					else {
 						responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
-						responseMessage.setErrorMessage(ErrorMessage.USER_ALREADY_EXIST);						
+						responseMessage.setErrorMessage(ErrorMessage.USER_REGISTER_FAILED);						
 					}
-				} catch (Exception e) {
+				} else {
 					responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
-					responseMessage.setErrorMessage(ErrorMessage.DATABASE_SERVICE_UNAVAILABLE);
-				} finally {				
-					if (stmt != null) {
-						try {
-							stmt.close();
-						} catch (SQLException e) {
-							e.printStackTrace();
-						}
+					responseMessage.setErrorMessage(ErrorMessage.USER_ALREADY_EXIST);						
+				}
+			} catch (Exception e) {
+				responseMessage.setMessageType(ResponseMessage.MESSAGE_TYPE_ERROR);
+				responseMessage.setErrorMessage(ErrorMessage.DATABASE_SERVICE_UNAVAILABLE);
+			} finally {				
+				if (stmt != null) {
+					try {
+						stmt.close();
+					} catch (SQLException e) {
+						e.printStackTrace();
 					}
-					if (conn != null) {
-						try {
-							conn.close();
-						} catch (SQLException e) {
-							e.printStackTrace();
-						}
+				}
+				if (conn != null) {
+					try {
+						conn.close();
+					} catch (SQLException e) {
+						e.printStackTrace();
 					}
 				}
 			}
-			return responseMessage;
-		} catch ( Exception e ) {
-			
 		}
-		return null;
+		return responseMessage;
 	}	
 	
 	
-	@Path("/modifyUser")
+	@Path("/updateUser")
 	@PUT
 	@Produces(MediaType.APPLICATION_JSON)
 	@Consumes(MediaType.APPLICATION_JSON)
